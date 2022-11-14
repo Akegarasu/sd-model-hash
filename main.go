@@ -2,41 +2,50 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"sync"
 )
 
-func hash(fileName string) string {
+func hash(fileName string) (string, error) {
+	var buf [0x10000]byte
+	var r [256 / 8]byte
 	f, err := os.Open(fileName)
 	if err != nil {
-		return ""
-	}
-	_, err = f.Seek(0x100000, 0)
-	if err != nil {
-		return ""
+		return "", err
 	}
 	defer f.Close()
-	buf := make([]byte, 0x10000)
-	_, err = f.Read(buf)
+	_, err = f.ReadAt(buf[:], 0x100000)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	h := sha256.New()
-	h.Write(buf)
-	return fmt.Sprintf("%x", h.Sum(nil))
+	_, err = h.Write(buf[:])
+	if err != nil {
+		return "", err
+	}
+	h.Sum(r[:0])
+	return hex.EncodeToString(r[:4]), nil
 }
 
 func main() {
-	for _, arg := range os.Args[1:] {
-		h := hash(arg)
-		if h == "" {
-			h = "error"
-		} else {
-			h = h[:8]
-		}
-		fmt.Printf("[%s] %s\n", h, arg)
+	if len(os.Args) <= 1 {
+		fmt.Println("usage: sd-model-hash file1.ckpt file2.ckpt ...")
+		return
 	}
-	fmt.Println("Press enter to exit...")
-	b := make([]byte, 1)
-	os.Stdin.Read(b)
+	wg := sync.WaitGroup{}
+	wg.Add(len(os.Args[1:]))
+	for _, f := range os.Args[1:] {
+		go func(f string) {
+			defer wg.Done()
+			h, err := hash(f)
+			if err != nil {
+				fmt.Printf("sd-model-hash (%s) err: %s\n", f, err)
+				return
+			}
+			fmt.Printf("sd-model-hash (%s) = %s\n", f, h)
+		}(f)
+	}
+	wg.Wait()
 }
