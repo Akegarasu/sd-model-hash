@@ -15,7 +15,7 @@ import (
 
 func showmessagebox(title, content string) {
 	toHighDPI()
-	_ = boxW(getConsoleWindows(), content, title, 0x00000030|0x00000001)
+	_ = boxW(getConsoleWindows(), content, title, 0x00000040|0x00000000)
 	return
 }
 
