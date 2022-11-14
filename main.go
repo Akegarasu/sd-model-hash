@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 )
 
@@ -41,11 +42,16 @@ func main() {
 			defer wg.Done()
 			h, err := hash(f)
 			if err != nil {
-				fmt.Printf("sd-model-hash (%s) err: %s\n", f, err)
+				fmt.Printf("[err:%s] err: %s\n", err, f)
 				return
 			}
-			fmt.Printf("sd-model-hash (%s) = %s\n", f, h)
+			fmt.Printf("[%s] %s\n", h, f)
 		}(f)
 	}
 	wg.Wait()
+	if runtime.GOOS == "windows" {
+		fmt.Println("Press enter to exit...")
+		b := make([]byte, 1)
+		os.Stdin.Read(b)
+	}
 }
